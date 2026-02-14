@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Musician Semantic Search</title>
+<style>
+body { font-family: Arial; padding:40px; background:#f5f5f5;}
+.container { background:white; padding:30px; border-radius:10px; max-width:700px; margin:auto;}
+button { padding:10px 20px; background:#6a1b9a; color:white; border:none; border-radius:6px;}
+input { padding:10px; width:60%; margin-right:10px;}
+.row { margin:10px 0; }
+.label { font-weight:bold; }
+img { max-width:250px; margin:15px 0;}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h2>🎵 Musician Semantic Search (Wikidata)</h2>
+
+<input type="text" id="searchInput" value="Queen">
+<button onclick="fetchData()">Cari</button>
+
+<div id="result" style="margin-top:20px;"></div>
+</div>
+
+<script>
+
+function fetchData(){
+
+const name = document.getElementById("searchInput").value;
+
+const query = `
+SELECT ?band ?bandLabel ?description ?genreLabel ?originLabel ?inception ?image
+WHERE {
+  ?band rdfs:label "${name}"@en.
+  OPTIONAL { ?band schema:description ?description. FILTER(LANG(?description)="en") }
+  OPTIONAL { ?band wdt:P136 ?genre. }
+  OPTIONAL { ?band wdt:P495 ?origin. }
+  OPTIONAL { ?band wdt:P571 ?inception. }
+  OPTIONAL { ?band wdt:P18 ?image. }
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}
+LIMIT 1
+`;
+
+const url = "https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(query);
+
+fetch(url)
+.then(res=>res.json())
+.then(data=>{
+
+const item = data.results.bindings[0];
+
+if(!item){
+document.getElementById("result").innerHTML="Data tidak ditemukan.";
+return;
+}
+
+document.getElementById("result").innerHTML=`
+${item.image ? `<img src="${item.image.value}">` : ""}
+
+<div class="row"><span class="label">Nama:</span> ${item.bandLabel?.value || "-"}</div>
+<div class="row"><span class="label">Deskripsi:</span> ${item.description?.value || "-"}</div>
+<div class="row"><span class="label">Genre:</span> ${item.genreLabel?.value || "-"}</div>
+<div class="row"><span class="label">Negara Asal:</span> ${item.originLabel?.value || "-"}</div>
+<div class="row"><span class="label">Tahun Berdiri:</span> ${item.inception?.value?.split("T")[0] || "-"}</div>
+<div class="row"><span class="label">Sumber:</span> 
+<a href="${item.band.value}" target="_blank">Lihat di Wikidata</a>
+</div>
+`;
+
+});
+
+}
+
+window.onload = fetchData;
+
+</script>
+
+</body>
+</html>
